@@ -1,0 +1,19 @@
+.test__rating {
+    text-align: center;
+    padding: 0 15px;
+    margin-top: 12px;
+	vertical-align: middle;
+}
+.rating_star {
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+    width:18px;
+    height: 16px;
+    background: url(../img/ratingstars.png) top left no-repeat;
+    margin-right: 2px;
+}
+.imposed,
+.marked {
+	background-position: bottom right !important;
+}
