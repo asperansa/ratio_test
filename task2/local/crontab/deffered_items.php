@@ -37,27 +37,76 @@ class SenderDefferedItems {
                 'USER_ID' 	=> 'FUSER.USER.ID',
                 'EMAIL' 	=> 'FUSER.USER.EMAIL',
                 'USERNAME' 		=> 'FUSER.USER.NAME',
-                'USER_PRODUCT_ID' => 'PRODUCT.ID'
+                'USER_PRODUCT_ID' => 'PRODUCT.ID',
+                'PRODUCT_NAME' => 'NAME'
             )
         ));
 
         if($userListDB->getSelectedRowsCount() > 0)	{
 
             while ($userList = $userListDB->fetch()) {
-                $defferedProductsList[$userList['EMAIL']][] = $userList['USER_PRODUCT_ID']; # список отложенных товаров по юзерам
+                $defferedProductsList[$userList['USER_ID']]['user_info'] = array(
+                    'email' => $userList['EMAIL'],
+                    'name' => $userList['USERNAME']
+                );
+
+                $defferedProductsList[$userList['USER_ID']]['product_ids'][] = $userList['USER_PRODUCT_ID']; # список отложенных товаров по юзерам
+                $defferedProductsList[$userList['USER_ID']]['product_names'][] = $userList['PRODUCT_NAME'];
             }
 
-            foreach ($defferedProductsList as $email => $products) {
+            foreach ($defferedProductsList as $userID => $productsAndUserInfo) {
 
-                // Отсылаем по списку пользователей
-                \Bitrix\Main\Mail\Event::send(
-                    "EVENT_NAME" => "DEFFERED_ITEMS",
-					"LID" => "s1",
-					"C_FIELDS" => array(
-                        "EMAIL" => $email,
-                        "PRODUCT_LIST" => $products
-                    ),
+                // Проверяем, что отложенные товары не были заказаны пользователем
+                // cписок пользователей, у которых брошенные товары в корзине за последние 30 дней
+                    $productListDB = \Bitrix\Sale\Basket::getList(array(
+                        'filter' => array(
+                            'DELAY' => 'N',
+                            'USER_PRODUCT_ID' => $productsAndUserInfo['product_ids'],
+                            '>DATE_UPDATE' => $dateFrom,
+                            'USER_ID' => $userID,
+                            '!ORDER_ID' => null
+                        ),
+                        'order' => array(
+                            'FUSER.USER.ID' => 'ASC'
+                        ),
+                        'group' => array(
+                            'USER_PRODUCT_ID'
+                        ),
+                        'select' => array(
+                            'USER_ID' 	=> 'FUSER.USER.ID',
+                            'USER_PRODUCT_ID' => 'PRODUCT_ID'
+                        )
+                    ));
+                $notProductList = array();
+                if($productListDB->getSelectedRowsCount() > 0) {
+
+                    while ($productList = $productListDB->fetch()) {
+                        // Список товаров, которые не войдут в рассылку
+                        $notProductList[] = $productList['USER_PRODUCT_ID'];
+                    }
+                }
+
+                $productListForMail = '';
+                foreach($productsAndUserInfo['product_ids'] as $key => $product) {
+                    if (!in_array($product, $notProductList))
+                    $productListForMail .= $productsAndUserInfo['product_names'][$key].'<br/>';
+                }
+
+                if (strlen($productListForMail) > 0) {
+                    // Отсылаем по списку пользователей
+                    \Bitrix\Main\Mail\Event::send(array(
+                        "EVENT_NAME" => "DEFFERED_ITEMS",
+                        "LID" => "s1",
+                        "C_FIELDS" => array(
+                            "EMAIL" => $productsAndUserInfo['user_info']['email'],
+                            "USERNAME" => $productsAndUserInfo['user_info']['name'],
+                            "PRODUCT_LIST" => 'В вашем вишлисте хранятся товары: <br/>' . $productListForMail
+                        ))
 				);
+                    } else {
+                    $this->message = 'Рассылка не была запущена.';
+                    return false;
+                }
 
 			}
             $this->message = 'Рассылка успешно произведена.';
