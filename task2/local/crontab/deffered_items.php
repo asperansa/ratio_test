@@ -19,10 +19,8 @@ class SenderDefferedItems {
     public function Send($days) {
 
         $dateFrom   = new \Bitrix\Main\Type\DateTime;
-        $dateTo     = new \Bitrix\Main\Type\DateTime;
 
         $dateFrom->setTime(0, 0, 0)->add('-' . $days.' days');
-        $dateTo->setTime(0, 0, 0);
 
         // cписок пользователей, у которых брошенные товары в корзине за последние 30 дней
         $userListDB = \Bitrix\Sale\Basket::getList(array(
