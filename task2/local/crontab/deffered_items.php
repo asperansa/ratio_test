@@ -47,13 +47,13 @@ class SenderDefferedItems {
         if ($userListDB->getSelectedRowsCount() > 0) {
 
             while ($userList = $userListDB->fetch()) {
-                $defferedProductsList[$userList['USER_ID']]['user_info'] = array(
-                    'email' => $userList['EMAIL'],
-                    'name' => $userList['USERNAME']
+                $defferedProductsList[$userList['USER_ID']]['USER_INFO'] = array(
+                    'EMAIL' => $userList['EMAIL'],
+                    'NAME' => $userList['USERNAME']
                 );
 
-                $defferedProductsList[$userList['USER_ID']]['product_ids'][] = $userList['USER_PRODUCT_ID']; # список отложенных товаров по пользователям
-                $defferedProductsList[$userList['USER_ID']]['product_names'][] = $userList['PRODUCT_NAME'];
+                $defferedProductsList[$userList['USER_ID']]['PRODUCT_IDS'][] = $userList['USER_PRODUCT_ID']; # список отложенных товаров по пользователям
+                $defferedProductsList[$userList['USER_ID']]['PRODUCT_NAMES'][] = $userList['PRODUCT_NAME'];
             }
 
             foreach ($defferedProductsList as $userID => $productsAndUserInfo) {
@@ -62,7 +62,7 @@ class SenderDefferedItems {
                 $productListDB = \Bitrix\Sale\Basket::getList(array(
                     'filter' => array(
                         'DELAY' => 'N',
-                        'USER_PRODUCT_ID' => $productsAndUserInfo['product_ids'],
+                        'USER_PRODUCT_ID' => $productsAndUserInfo['PRODUCT_IDS'],
                         '>DATE_UPDATE' => $dateFrom,
                         'USER_ID' => $userID,
                         '!ORDER_ID' => null
@@ -91,9 +91,9 @@ class SenderDefferedItems {
 
                 # формируем строку из списка товаров, удовлетворяющих условиям выше
                 $productListForMail = '';
-                foreach($productsAndUserInfo['product_ids'] as $key => $product) {
+                foreach($productsAndUserInfo['PRODUCTS_IDS'] as $key => $product) {
                     if (!in_array($product, $notProductList))
-                    $productListForMail .= $productsAndUserInfo['product_names'][$key].'<br/>';
+                    $productListForMail .= $productsAndUserInfo['PRODUCT_NAMES'][$key].'<br/>';
                 }
 
                 if (strlen($productListForMail) > 0) {
@@ -103,8 +103,8 @@ class SenderDefferedItems {
                         "EVENT_NAME" => "DEFFERED_ITEMS",
                         "LID"       => "s1",
                         "C_FIELDS"  => array( # поля для подстановки в почтовый шаблон
-                            "EMAIL"         => $productsAndUserInfo['user_info']['email'],
-                            "USERNAME"      => $productsAndUserInfo['user_info']['name'],
+                            "EMAIL"         => $productsAndUserInfo['USER_INFO']['EMAIL'],
+                            "USERNAME"      => $productsAndUserInfo['USER_INFO']['NAME'],
                             "PRODUCT_LIST"  => 'В вашем вишлисте хранятся товары: <br/>' . $productListForMail
                         )
                     ));
