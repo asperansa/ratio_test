@@ -8,7 +8,36 @@ require( $_SERVER[ 'DOCUMENT_ROOT' ] . "/bitrix/modules/main/include/prolog_befo
 class SenderDefferedItems {
 
     /** @var string */
+    private $eventName = 'DEFFERED_ITEMS';
+
+    /** @var string */
     public $message;
+
+    /**
+     * Отправляет Вишлист на e-mail пользователю по шаблону DEFFERED_ITEMS
+     *
+     * @param $email
+     * @param $name
+     * @param $wishList
+     * @return bool
+     **/
+    private function SendToEmail($email, $name, $wishList) {
+        if (strlen($wishList) > 0) {
+            // Отсылаем письма каждому пользователю
+            \Bitrix\Main\Mail\Event::send(array(
+                "EVENT_NAME" => $this->eventName,
+                "LID"       => "s1",
+                "C_FIELDS"  => array( # поля для подстановки в почтовый шаблон
+                    "EMAIL"         => $email,
+                    "USERNAME"      => $name,
+                    "PRODUCT_LIST"  => 'В вашем вишлисте хранятся товары: <br/>' . $wishList
+                )
+            ));
+            return true;
+        } else {
+            return false;
+        }
+    } //  private function SendToEmail($email, $name, $wishList)..
 
     /**
      * Осуществляет рассылку по пользователям, у которых есть отложенные товары в корзине за последние N дней
@@ -96,27 +125,18 @@ class SenderDefferedItems {
                     $productListForMail .= $productsAndUserInfo['PRODUCT_NAMES'][$key].'<br/>';
                 }
 
-                if (strlen($productListForMail) > 0) {
-
-                    // Отсылаем письма каждому пользователю
-                    \Bitrix\Main\Mail\Event::send(array(
-                        "EVENT_NAME" => "DEFFERED_ITEMS",
-                        "LID"       => "s1",
-                        "C_FIELDS"  => array( # поля для подстановки в почтовый шаблон
-                            "EMAIL"         => $productsAndUserInfo['USER_INFO']['EMAIL'],
-                            "USERNAME"      => $productsAndUserInfo['USER_INFO']['NAME'],
-                            "PRODUCT_LIST"  => 'В вашем вишлисте хранятся товары: <br/>' . $productListForMail
-                        )
-                    ));
+                if ($this->SendToEmail(
+                    $productsAndUserInfo['USER_INFO']['EMAIL'],
+                    $productsAndUserInfo['USER_INFO']['NAME'],
+                    $productListForMail)
+                ) {
+                    $this->message = 'Рассылка успешно произведена.';
+                    return true;
                 } else {
                     $this->message = 'Рассылка не была запущена.';
                     return false;
                 }
-
 			}
-
-            $this->message = 'Рассылка успешно произведена.';
-            return true;
 
         } else {
             $this->message = 'Рассылка не была запущена.';
